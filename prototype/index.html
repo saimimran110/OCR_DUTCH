@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bank Verification Review — Raydian Cloud</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-left">
+            <img src="assets/raydian-logo.png" alt="Raydian Cloud" class="nav-logo">
+            <span class="nav-separator"></span>
+            <div>
+                <div class="nav-title">Bank Verification Review</div>
+                <div class="nav-subtitle">Document extraction and approval</div>
+            </div>
+        </div>
+        <div class="nav-right">
+            <span class="nav-badge">PROTOTYPE</span>
+            <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V4a1 1 0 0 1 1-1Zm0 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm9-7a1 1 0 1 1 0 2h-1a1 1 0 1 1 0-2h1ZM5 11a1 1 0 1 1 0 2H4a1 1 0 1 1 0-2h1Zm13.66-5.07a1 1 0 0 1 0 1.41l-.7.71a1 1 0 1 1-1.42-1.42l.71-.7a1 1 0 0 1 1.41 0ZM7.46 16.54a1 1 0 0 1 0 1.42l-.7.7a1 1 0 1 1-1.42-1.41l.71-.71a1 1 0 0 1 1.41 0Zm10.5 0 .7.71a1 1 0 0 1-1.41 1.41l-.71-.7a1 1 0 0 1 1.42-1.42ZM6.76 5.93l.7.7a1 1 0 0 1-1.41 1.42l-.71-.71a1 1 0 1 1 1.42-1.41ZM12 19a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Z"/></svg>
+            </button>
+            <img src="assets/verifone-logo.png" alt="Verifone" class="nav-logo verifone-logo">
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-label">WORKFLOW</div>
+                <div class="sidebar-item active" data-step="upload">
+                    <span class="step-indicator">1</span>
+                    <div><strong>Upload PDF</strong><small>Select bank verification</small></div>
+                </div>
+                <div class="sidebar-item" data-step="review">
+                    <span class="step-indicator">2</span>
+                    <div><strong>Review Fields</strong><small>Edit and remove values</small></div>
+                </div>
+                <div class="sidebar-item" data-step="export">
+                    <span class="step-indicator">3</span>
+                    <div><strong>Approve</strong><small>Download Excel</small></div>
+                </div>
+            </div>
+
+            <div class="sidebar-section sidebar-stats">
+                <div class="sidebar-label">DOCUMENT</div>
+                <div class="stat-row"><span>Status</span><strong id="stat-status">Waiting</strong></div>
+                <div class="stat-row"><span>Pages</span><strong id="stat-pages">—</strong></div>
+                <div class="stat-row"><span>Unique fields</span><strong id="stat-fields">—</strong></div>
+                <div class="stat-row"><span>Confidence</span><strong id="stat-confidence">—</strong></div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <section id="upload-view" class="view active">
+                <div class="hero-copy">
+                    <span class="eyebrow">BANK VERIFICATION INTAKE</span>
+                    <h1>Upload a PDF to begin</h1>
+                    <p>The document will be displayed beside its extracted fields for a fast human review.</p>
+                </div>
+
+                <label class="upload-zone" id="upload-zone" for="pdf-input">
+                    <input id="pdf-input" type="file" accept="application/pdf,.pdf" hidden>
+                    <span class="upload-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm1 3.41L18.59 9H15V5.41ZM8 13h3v-2l4 3-4 3v-2H8v-2Z"/></svg>
+                    </span>
+                    <h2>Drop your bank verification PDF here</h2>
+                    <p>or click to browse from your computer</p>
+                    <span class="upload-requirement">PDF only · Up to 30 MB · Multi-page supported</span>
+                </label>
+
+                <div class="trust-row">
+                    <div><span class="trust-icon">01</span><strong>Upload</strong><small>Choose any BV template</small></div>
+                    <div class="trust-line"></div>
+                    <div><span class="trust-icon">02</span><strong>Extract</strong><small>Textract reads every page</small></div>
+                    <div class="trust-line"></div>
+                    <div><span class="trust-icon">03</span><strong>Approve</strong><small>Download clean Excel</small></div>
+                </div>
+            </section>
+
+            <section id="review-view" class="view">
+                <div class="workspace-header">
+                    <div>
+                        <div class="eyebrow">HUMAN-IN-THE-LOOP REVIEW</div>
+                        <h1>Verify extracted fields</h1>
+                    </div>
+                    <div class="workspace-actions">
+                        <button class="btn-secondary" id="new-document" type="button">
+                            <svg viewBox="0 0 24 24"><path d="M12 5V3L8 7l4 4V9c3.31 0 6 2.69 6 6 0 1.01-.25 1.96-.69 2.79l1.46 1.46A7.95 7.95 0 0 0 20 15a8 8 0 0 0-8-8ZM6.69 12.21 5.23 10.75A7.95 7.95 0 0 0 4 15a8 8 0 0 0 8 8v2l4-4-4-4v2c-3.31 0-6-2.69-6-6 0-1.01.25-1.96.69-2.79Z"/></svg>
+                            New document
+                        </button>
+                        <button class="btn-primary" id="approve-button" type="button">
+                            <svg viewBox="0 0 24 24"><path d="m9 16.17-3.88-3.88L3.7 13.7 9 19 20.3 7.7l-1.42-1.41L9 16.17Z"/></svg>
+                            Approve &amp; Download Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="review-grid">
+                    <section class="panel source-panel">
+                        <header class="panel-toolbar">
+                            <span class="file-icon">
+                                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm1 3.41L18.59 9H15V5.41Z"/></svg>
+                            </span>
+                            <div class="file-meta"><strong id="document-name">document.pdf</strong><small id="document-meta">PDF document</small></div>
+                            <span class="status-pill success">EXTRACTED</span>
+                            <a class="icon-button" id="open-pdf" target="_blank" title="Open PDF in a new tab">
+                                <svg viewBox="0 0 24 24"><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7ZM5 5h6V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6h-2v6H5V5Z"/></svg>
+                            </a>
+                        </header>
+                        <div class="pdf-wrap"><iframe id="pdf-frame" title="Uploaded PDF preview"></iframe></div>
+                    </section>
+
+                    <section class="panel fields-panel">
+                        <header class="panel-toolbar fields-toolbar">
+                            <div>
+                                <strong>Extracted fields</strong>
+                                <small><span id="visible-field-count">0</span> unique fields · Changes are included in Excel</small>
+                            </div>
+                            <button class="btn-add" id="add-field" type="button">
+                                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z"/></svg>
+                                Add field
+                            </button>
+                        </header>
+                        <div class="field-search-wrap">
+                            <svg viewBox="0 0 24 24"><path d="M9.5 3a6.5 6.5 0 1 0 3.98 11.64L19.85 21 21 19.85l-6.36-6.37A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"/></svg>
+                            <input id="field-search" type="search" placeholder="Search fields or values…">
+                        </div>
+                        <div class="field-list" id="field-list"></div>
+                        <footer class="fields-footer">
+                            <span><span class="dot"></span> All edits are local until approval</span>
+                            <button class="btn-primary compact" id="approve-button-footer" type="button">Approve &amp; Download Excel</button>
+                        </footer>
+                    </section>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="processing-overlay" id="processing-overlay" hidden>
+        <div class="processing-card">
+            <div class="spinner"></div>
+            <h2>Extracting document</h2>
+            <p id="processing-message">Rendering PDF pages…</p>
+            <div class="progress-track"><span></span></div>
+            <small>Multi-page documents can take a little longer.</small>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+</body>
+</html>

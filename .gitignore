@@ -1,0 +1,5 @@
+.env
+__pycache__/
+ocr_output/
+prototype/uploads/
+prototype/runs/
