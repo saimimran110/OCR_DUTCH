@@ -269,6 +269,7 @@ h1 { margin: 8px 0 8px; color: var(--text-primary); font-size: clamp(25px, 3vw, 
 .field-value { font-size: 12.5px; background: var(--bg-elevated); border-color: var(--border); }
 .field-value:focus, .field-name:focus { border-color: var(--accent-blue); }
 .field-meta { display: flex; align-items: center; gap: 6px; }
+.selection-badge { color: var(--accent-blue); font-size: 8px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
 .confidence { font-size: 9px; font-weight: 750; border-radius: 999px; padding: 3px 7px; white-space: nowrap; }
 .confidence.high { background: var(--accent-green-bg); color: var(--accent-green); }
 .confidence.medium { background: var(--accent-yellow-bg); color: var(--accent-yellow); }

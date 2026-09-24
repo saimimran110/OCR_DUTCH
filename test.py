@@ -14,6 +14,7 @@ from typing import Any
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from dotenv import load_dotenv
+from PIL import Image
 
 
 DEFAULT_OUTPUT_DIR = Path("textract_results")
@@ -58,6 +59,50 @@ def render_pdf_pages(pdf_path: Path, render_dir: Path, dpi: int) -> list[Path]:
     return pages
 
 
+def recover_missed_checkbox_marks(
+    blocks: list[dict[str, Any]], image_path: Path
+) -> None:
+    """Mark a checkbox selected when its centre visibly contains ink.
+
+    Textract can miss handwritten crosses that touch or slightly extend beyond
+    a checkbox border. Checking only the centre avoids treating unrelated
+    ticks elsewhere on the page as a selected checkbox.
+    """
+    with Image.open(image_path) as image:
+        grayscale = image.convert("L")
+        width, height = grayscale.size
+
+        for block in blocks:
+            if (
+                block.get("BlockType") != "SELECTION_ELEMENT"
+                or block.get("SelectionStatus") != "NOT_SELECTED"
+            ):
+                continue
+
+            box = block.get("Geometry", {}).get("BoundingBox", {})
+            left = float(box.get("Left", 0))
+            top = float(box.get("Top", 0))
+            box_width = float(box.get("Width", 0))
+            box_height = float(box.get("Height", 0))
+            if box_width <= 0 or box_height <= 0:
+                continue
+
+            # Exclude the printed square border; a real cross passes through
+            # this central area, whereas an empty box is mostly white here.
+            x0 = max(0, int((left + box_width * 0.25) * width))
+            y0 = max(0, int((top + box_height * 0.25) * height))
+            x1 = min(width, int((left + box_width * 0.75) * width))
+            y1 = min(height, int((top + box_height * 0.75) * height))
+            if x1 <= x0 or y1 <= y0:
+                continue
+
+            pixels = list(grayscale.crop((x0, y0, x1, y1)).getdata())
+            dark_pixel_ratio = sum(pixel < 130 for pixel in pixels) / len(pixels)
+            if dark_pixel_ratio >= 0.07:
+                block["SelectionStatus"] = "SELECTED"
+                block["SelectionDetection"] = "local_checkbox_ink"
+
+
 def analyze_pages(textract: Any, pdf_path: Path, dpi: int) -> dict[str, Any]:
     """Analyze rendered pages individually and combine them as one response."""
     all_blocks: list[dict[str, Any]] = []
@@ -72,6 +117,7 @@ def analyze_pages(textract: Any, pdf_path: Path, dpi: int) -> dict[str, Any]:
                 Document={"Bytes": image_path.read_bytes()},
                 FeatureTypes=["FORMS", "TABLES"],
             )
+            recover_missed_checkbox_marks(response.get("Blocks", []), image_path)
 
             for block in response.get("Blocks", []):
                 block["Page"] = page_number
@@ -97,6 +143,19 @@ def normalize_ocr_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"^(?:BIG|BCI)\s*:", "BIC:", text, flags=re.IGNORECASE)
     return text
+
+
+def clean_extracted_value(label: str, value: str | None) -> str | None:
+    """Remove label text that Textract sometimes attaches to a field value."""
+    if not value:
+        return None
+
+    value = normalize_ocr_text(value)
+    if re.search(r"e-?mail", label, re.IGNORECASE):
+        email = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", value)
+        if email:
+            return email.group(0)
+    return value
 
 
 def extract_clean_data(response: dict[str, Any]) -> dict[str, Any]:
@@ -140,25 +199,42 @@ def extract_clean_data(response: dict[str, Any]) -> dict[str, Any]:
 
         key_text = child_text(block)
         value_parts: list[str] = []
+        has_selection_element = False
         for relationship in block.get("Relationships", []):
             if relationship.get("Type") != "VALUE":
                 continue
-            value_parts.extend(
-                child_text(block_map[value_id])
-                for value_id in relationship.get("Ids", [])
-                if value_id in block_map
-            )
+            for value_id in relationship.get("Ids", []):
+                if value_id not in block_map:
+                    continue
+                value_block = block_map[value_id]
+                for child_relationship in value_block.get("Relationships", []):
+                    if child_relationship.get("Type") != "CHILD":
+                        continue
+                    for child_id in child_relationship.get("Ids", []):
+                        child = block_map.get(child_id, {})
+                        if child.get("BlockType") == "SELECTION_ELEMENT":
+                            has_selection_element = True
+                value_parts.append(child_text(value_block))
 
-        value_text = normalize_ocr_text(
-            " ".join(part for part in value_parts if part)
+        raw_value_text = normalize_ocr_text(" ".join(part for part in value_parts if part))
+        attached_label = re.search(
+            r"\s+(rechnungsversand\s*:?)\s*$",
+            raw_value_text,
+            re.IGNORECASE,
         )
+        if attached_label and re.search(r"e-?mail", key_text, re.IGNORECASE):
+            key_text = f"{key_text.rstrip(':').strip()} {attached_label.group(1)}"
+            raw_value_text = raw_value_text[: attached_label.start()].strip()
+
+        value_text = clean_extracted_value(key_text, raw_value_text)
         if key_text or value_text:
             fields.append(
                 {
                     "page": block.get("Page", 1),
                     "key": key_text,
                     "value": value_text or None,
-                    "selected": "[X]" in value_text,
+                    "selected": "[X]" in (value_text or ""),
+                    "checkbox": has_selection_element,
                     "confidence": round(block.get("Confidence", 0), 2),
                 }
             )
