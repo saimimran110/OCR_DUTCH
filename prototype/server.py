@@ -48,16 +48,21 @@ def dedupe_fields(
     candidates: list[dict[str, Any]] = []
 
     for field in clean_data["fields"]:
+        label = clean_label(field.get("key", ""))
         value = field.get("value") or ""
         value = value.replace("[X]", "").strip()
-        if field.get("selected") and not value:
-            value = "Selected"
+        # A checkbox/tick without text is not a field value. Keep the field
+        # empty so the reviewer can enter a value instead of seeing a false
+        # value such as "Selected".
         candidates.append(
             {
-                "label": clean_label(field.get("key", "")),
+                # Preserve the label exactly as detected on the document.
+                "label": label,
                 "value": value,
                 "page": field.get("page"),
                 "confidence": field.get("confidence"),
+                "selected": bool(field.get("selected")),
+                "checkbox": bool(field.get("checkbox")),
             }
         )
 
@@ -76,9 +81,9 @@ def dedupe_fields(
 
     identifiers = schema.get("identifiers", {})
     for item in identifiers.get("customer_numbers", []):
-        add_schema_value("Customer Number", item.get("value"))
+        add_schema_value("Kundennummer", item.get("value"))
     for item in identifiers.get("terminal_ids", []):
-        add_schema_value("Terminal ID", item.get("value"))
+        add_schema_value("Terminal-ID", item.get("value"))
     for value in identifiers.get("creditor_identifiers", []):
         add_schema_value("Creditor Identifier", value)
 
@@ -87,6 +92,12 @@ def dedupe_fields(
         add_schema_value("IBAN", item.get("value"), item.get("checksum_valid"))
     for value in banking.get("bics", []):
         add_schema_value("BIC", value)
+
+    # Keep only fields directly detected by Textract. Schema-derived fields
+    # have no source confidence/page and are not needed in the review UI.
+    candidates = [
+        field for field in candidates if field.get("confidence") is not None
+    ]
 
     unique_fields: list[dict[str, Any]] = []
     seen_pairs: set[tuple[str, str]] = set()

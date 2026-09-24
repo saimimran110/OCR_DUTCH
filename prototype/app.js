@@ -91,12 +91,21 @@ function fieldCard(field) {
     const valueInput = document.createElement("input");
     valueInput.className = "field-input field-value";
     valueInput.value = field.value ?? "";
-    valueInput.placeholder = "No value extracted";
+    valueInput.placeholder = field.checkbox
+        ? (field.selected ? "Selected" : "Not selected")
+        : "No value extracted";
     valueInput.setAttribute("aria-label", `${field.label || "Field"} value`);
     valueInput.addEventListener("input", () => { field.value = valueInput.value; });
 
     const meta = document.createElement("div");
     meta.className = "field-meta";
+    if (field.selected) {
+        const selected = document.createElement("span");
+        selected.className = "selection-badge";
+        selected.textContent = "SELECTED";
+        selected.title = "Checkbox detected as selected; value is empty and can be entered manually.";
+        meta.appendChild(selected);
+    }
     if (field.confidence != null) {
         const confidence = document.createElement("span");
         confidence.className = `confidence ${confidenceClass(field.confidence)}`;
